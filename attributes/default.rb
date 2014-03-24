@@ -84,3 +84,27 @@ default['haproxy']['listeners'] = {
   'frontend' => {},
   'backend' => {}
 }
+
+# A hash containing zero or more applications to be proxied; here's an example
+# for proxying nodes running a role named 'geoserver'.  Haproxy will be configured
+# to listen on 127.0.0.1:8889 and perform load balancing to all nodes of role
+# geoserver.  Traffic will be forwarded to the port stored under ['tomcat']['port']
+# on the target node.  If any of incoming_address, frontend_max_connections, or
+# member_max_connections are not specified, the attributes directly under the
+# haproxy namespace will be used instead.
+#
+# override_attributes({
+#   :haproxy => {
+#     :applications => {
+#       'geoserver' => {
+#         'role_name' => 'geoserver',
+#         'incoming_address' => '127.0.0.1',
+#         'port' => 8889,
+#         'frontend_max_connections' => 10000,
+#         'member_max_connections' => 200,
+#         'app_port_attrib' => 'tomcat.port'
+#       }
+#     }
+#   }
+# })
+default['haproxy']['applications'] = {}
