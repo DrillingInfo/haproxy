@@ -8,6 +8,7 @@ version           "1.6.3"
 
 recipe "haproxy", "Installs and configures haproxy"
 recipe "haproxy::app_lb", "Installs and configures haproxy by searching for nodes of a particular role"
+recipe "haproxy::applications", "Installs and configures haproxy with multiple applications by searching for nodes of a particular role"
 
 %w{ debian ubuntu centos redhat}.each do |os|
   supports os
@@ -138,6 +139,12 @@ attribute "haproxy/member_max_connections",
   :description => "The maxconn value to be set for each app server.",
   :required => "optional",
   :default => "100"
+
+attribute "haproxy/mode",
+  :display_name => "HAProxy mode",
+  :description => "The running mode or protocol for HAProxy",
+  :required => "optional",
+  :default => "http"
 
 attribute "haproxy/user",
   :display_name => "HAProxy user",
