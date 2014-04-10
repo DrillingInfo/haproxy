@@ -55,6 +55,7 @@ Attributes
 - `node['haproxy']['cookie']` - if set, use this to pin connection to the same server with a cookie.
 - `node['haproxy']['user']` - user that haproxy runs as
 - `node['haproxy']['group']` - group that haproxy runs as
+- `node['haproxy']['mode']` - sets the default running mode or protocol, default http
 - `node['haproxy']['global_max_connections']` - in the `app_lb` config, set the global maxconn
 - `node['haproxy']['member_max_connections']` - the maxconn value to
   be set for each app server if not otherwise specified in the members attribute
@@ -70,6 +71,20 @@ Attributes
 - `node['haproxy']['source']['target_cpu']` - the target cpu used to `make` haproxy
 - `node['haproxy']['source']['target_arch']` - the target arch used to `make` haproxy
 - `node['haproxy']['source']['use_pcre']` - whether to build with libpcre support
+- `node['haproxy']['applications']` - used by the applications recipe to specify which applications to add
+
+  ```ruby
+  {
+    "geoserver" => {
+      "role_name" => "geoserver",
+      "incoming_address" => "127.0.0.1",  # optional, default node['haproxy']['incoming_address']
+      "port" => 8889,
+      "frontend_max_connections" => 2000, # optional, default node['haproxy']['frontend_max_connections']
+      "member_max_connections" => 200,    # optional, default node['haproxy']['member_max_connections']
+      "app_port_attrib" => "tomcat.port"  # attribute name on nodes in role_name
+    }
+  }
+  ```
 
 Recipes
 -------
@@ -78,6 +93,10 @@ Sets up haproxy using statically defined configuration. To override the configur
 
 ### app_lb
 Sets up haproxy using dynamically defined configuration through search. See __Usage__ below.
+
+### applications
+Sets up multiple applications using dynamically defined configuration through
+search.  See __Usage__ below.
 
 ### tuning
 Uses the community `cpu` cookbook's `cpu_affinity` LWRP to set affinity for the haproxy process.
@@ -188,7 +207,8 @@ end
 
 Usage
 -----
-Use either the default recipe or the `app_lb` recipe.
+Use either the default recipe or the `app_lb` recipe.  To generate multiple
+application listeners dynamically, the `applications` recipe may also be used.
 
 When using the default recipe, the members attribute specifies the http application servers. If you wish to use the `node['haproxy']['listeners']` attribute or `haproxy_lb` lwrp instead then set `node['haproxy']['enable_default_http']` to `false`.
 
@@ -241,6 +261,47 @@ override_attributes(
 
 The search uses the node's `chef_environment`. For example, create `environments/production.rb`, then upload it to the server with knife
 
+The applications recipe builds on `haproxy_lb` and the default recipe.  It is
+used when haproxy should provide multiple frontend/backend pairs for different
+applications (typically when clients provide their own load balancing).  When
+using the applications recipe, the run list for the node should first include
+the applications recipe and then the default recipe.
+
+Applications to be load balanced are specified as follows:
+
+```ruby
+"haproxy" => {
+  "applications" => {
+    "geoserver_base" => {
+      "role_name" => "geoserver_base_maps",
+      "incoming_address" => "127.0.0.1",
+      "port" => 8889,
+      "frontend_max_connections" => 2000,
+      "member_max_connections" => 200,
+      "app_port_attrib" => "tomcat.port"
+    },
+    "geoserver_dynamic" => {
+      "role_name" => "geoserver_overlays",
+      "incoming_address" => "127.0.0.1",
+      "port" => 8890,
+      "frontend_max_connections" => 2000,
+      "member_max_connections" => 200,
+      "app_port_attrib" => "tomcat.port"
+    }
+  }
+}
+```
+
+The above is used to create two listeners on ports 8889 and 8890, each pointing
+to a different cluster of geoservers (with different data sets).  Note that
+`incoming_address`, `frontend_max_connections`, and `member_max_connections` are
+optional and will be inherited from `node['haproxy']` if not specified (on a
+per-application basis).
+
+The `app_port_attrib` is read from each node returned from the chef search, so
+in the above example each geoserver node found by search would be queried for 
+`node['tomcat']['port']`, with the resulting port used as the forwarding port
+for that node.  (This is done per-node).
 
 License & Authors
 -----------------
